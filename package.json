@@ -1,0 +1,31 @@
+{
+  "name": "dicegameweb",
+  "version": "1.0.0",
+  "description": "Data DiceGame by Chuntao Lin",
+  "main": "index.js",
+  "scripts": {
+    "test": "git repository:",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChunTaoLin/dicegameweb.git"
+  },
+  "keywords": [
+    "data",
+    "dicegame"
+  ],
+  "author": "Chuntao Lin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ChunTaoLin/dicegameweb/issues"
+  },
+  "homepage": "https://github.com/ChunTaoLin/dicegameweb#readme",
+  "dependencies": {
+    "aws-sdk": "^2.1184.0",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "fs": "^0.0.1-security",
+    "node-fetch": "^3.2.9"
+  }
+}
