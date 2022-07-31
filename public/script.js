@@ -1,3 +1,5 @@
+const { default: fetch } = require("node-fetch");
+
 //Client based
 var userName;
 var highestScoreSelf;
@@ -37,7 +39,7 @@ async function rollDice()
   };
 
   //send and receive response
-  const response = await fetch('/diceRoll',options);
+  const response = await fetch('https://dice-game-web.herokuapp.com/index.js',options);
   const diceData = await response.json();
   
   //set local client data with the datapackage received from the server
