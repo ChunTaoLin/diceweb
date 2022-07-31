@@ -3,6 +3,10 @@ const fs = require('fs');
 const readline = require('readline');
 const express = require('express');
 const { env } = require('process');
+const replace = require('replace-in-file');//node package found https://www.npmjs.com/package/replace-in-file
+const dataStore = require('nedb');
+const os = require ('os');
+
 require('dotenv').config();
 
 //Amazon web services
@@ -18,39 +22,27 @@ const s3 = new AWS.S3({
 
 
 //Other variables and such
-var playerData;
-
 var highestScore = 0;
 var highestScoreUser = "";
 
-
+//const database = new dataStore('scoreboard.db');
+//database.loadDatabase();//load any existing data
+//database.insert({user: 'TEST',highscore: '5'})
 const app = express();
 const port = process.env.PORT || 80;
-
-module.exports={app};
 
 app.use(express.static('public'));
 app.use(express.json({limit: '50mb'}));
 
 //Oopening application
 app.listen(port, () => console.log(`Starting Server at ${port}`));
-
-
+//retrieve the playerscore that is on the AWS S3 bucket.
 getBucket();
-
-//const dataBase = new dataStore('diceGameDataBase.db');
-//dataBase.loadDatabase();
-
-
-//Send the data from AWS to all clients
-//app.get('/', function(req,res){
-  //res.sendFile(fileName);
-//})
 
 app.get('/updateClientScore',(request,response)=>
 {
   console.log('Request to Update clients scores');
-  console.log(request.body);
+ 
   fs.readFile(fileName, 'utf8', (err, data) => 
   {
     if(err)
@@ -76,25 +68,22 @@ app.post('/diceRoll',(request,response) =>
   var num = Math.floor(Math.random() * 6 )+ 1
   var num2 = Math.floor(Math.random() * 6 )+ 1
   var sum = num + num2;
-  //Some logic to see whats the highest value so far
-  if(sum > highestScore)
-  {
-    console.log("old score: " + highestScore);
-    highestScore = sum;
-    console.log("new score: " + highestScore);
-    
-  }
+
+  console.log("Name:" + request.body.name);
+  updateScoreForClient(sum,request.body.name);
+ 
   //package successful, put in the new numbers into a new path set for each variable
   response.json(
   {
     status: 'success',
     img1: "assets/d"+ num+".png",
     img2: "assets/d"+ num2+".png",
+    name: request.body.name
   });
 });
 
 
-app.post('/api',(request,response) =>
+app.post('/sendData',(request,response) =>
 {
   console.log('Request Found');
 
@@ -137,23 +126,80 @@ function getBucket(){
       console.log("got data");
   
       if(data.Body != "")
-      fs.writeFile(fileName,data.Body+"Server data retreived".toString(), err => {
-        if (err) {
-          console.error(err);
-        }
-        
-        updateScore();
-        // file written successfully
-      });
+      {
+        fs.writeFile(fileName,data.Body.toString(), err => 
+        {
+          if (err) 
+          {
+            console.error(err);
+          }
+          
+          updateScoreFromFile();
+          // file written successfully
+        });
+       
+      }
+     
       
     }
  
   });
 
 };
-
-function updateScore()
+function updateScoreForClient(newScore,user)
 {
+
+    console.log("UPDATE SCORE for " +user);
+
+    //This allows me to create the interface to read stream the file
+    var lineReader = require('readline').createInterface({
+      input: fs.createReadStream(fileName)
+    });
+
+    //Line by line split the contents and then see if the new coming user+score is better
+    //Then whats on record.
+    lineReader.on('line', function (line) 
+    {
+      var array = line.split(':');
+      //if the first part of the string array(name) matches the user continue
+      if(array[0] == user)
+      {//if the new score is greater than the current
+        if(newScore > array[1])
+        {
+          const options = {
+            files: fileName,
+            from: line,
+            to: user+':'+newScore,
+          };
+          replace(options).then(results => {
+            console.log('New Score for ' + user + ':', results);
+          }).catch(error => {
+            console.error('Error occurred while setting score:', error);
+          });
+          return;
+        }
+        
+      }
+
+    });
+
+  //by this point no entry of user was found so we add one;
+  fs.appendFileSync(fileName,'\r\n');
+  fs.appendFileSync(fileName,user+':'+newScore);
+
+
+  //see if record is broken!
+  if(newScore > highestScore)
+  {
+    highestScore = newScore;
+    highestScoreUser = user;
+  }
+
+ //uploadFile(fileName);
+}
+function updateScoreFromFile()
+{
+  console.log("UPDATE SCORE");
   //This allows me to create the interface to read stream the file
   var lineReader = require('readline').createInterface({
       input: fs.createReadStream(fileName)
@@ -165,8 +211,8 @@ function updateScore()
       var array = line.split(':');
       if(array[1] > highestScore)
       {
-        highestScore = array[0];
-        highestScoreUser = array[1];
+        highestScore = array[1];
+        highestScoreUser = array[0];
       }
       console.log('Number: ' + highestScore);
       console.log('User: ' + highestScoreUser);
@@ -190,7 +236,7 @@ function uploadFile (fileName)
       console.log(err);
     }
     else{
-      console.log("FIle uploaded success",data.Location);
+      console.log("File uploaded success",data.Location);
     }
   });
 }

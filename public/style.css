@@ -4,6 +4,8 @@ body {
   #3f5efb,#00fd4c);
 }
 
+.display_whitespace{ white-space:pre; }
+
 .wrapper{
   width: 70%;
   margin: auto;
