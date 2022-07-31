@@ -39,7 +39,7 @@ async function rollDice()
   };
 
   //send and receive response
-  const response = await fetch('https://dice-game-web.herokuapp.com/index.js',options);
+  const response = await fetch('/index.js/rollDice',options);
   const diceData = await response.json();
   
   //set local client data with the datapackage received from the server
