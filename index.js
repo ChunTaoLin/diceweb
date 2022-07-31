@@ -4,7 +4,6 @@ const readline = require('readline');
 const express = require('express');
 const { env } = require('process');
 const replace = require('replace-in-file');//node package found https://www.npmjs.com/package/replace-in-file
-const dataStore = require('nedb');
 const os = require ('os');
 
 require('dotenv').config();
@@ -25,9 +24,6 @@ const s3 = new AWS.S3({
 var highestScore = 0;
 var highestScoreUser = "";
 
-//const database = new dataStore('scoreboard.db');
-//database.loadDatabase();//load any existing data
-//database.insert({user: 'TEST',highscore: '5'})
 const app = express();
 const port = process.env.PORT || 80;
 
@@ -133,8 +129,7 @@ function getBucket(){
           {
             console.error(err);
           }
-          
-          updateScoreFromFile();
+        
           // file written successfully
         });
        
@@ -146,47 +141,12 @@ function getBucket(){
   });
 
 };
+
 function updateScoreForClient(newScore,user)
 {
 
-    console.log("UPDATE SCORE for " +user);
-
-    //This allows me to create the interface to read stream the file
-    var lineReader = require('readline').createInterface({
-      input: fs.createReadStream(fileName)
-    });
-
-    //Line by line split the contents and then see if the new coming user+score is better
-    //Then whats on record.
-    lineReader.on('line', function (line) 
-    {
-      var array = line.split(':');
-      //if the first part of the string array(name) matches the user continue
-      if(array[0] == user)
-      {//if the new score is greater than the current
-        if(newScore > array[1])
-        {
-          const options = {
-            files: fileName,
-            from: line,
-            to: user+':'+newScore,
-          };
-          replace(options).then(results => {
-            console.log('New Score for ' + user + ':', results);
-          }).catch(error => {
-            console.error('Error occurred while setting score:', error);
-          });
-          return;
-        }
-        
-      }
-
-    });
-
-  //by this point no entry of user was found so we add one;
-  fs.appendFileSync(fileName,'\r\n');
-  fs.appendFileSync(fileName,user+':'+newScore);
-
+ 
+  checkForDuplicates(newScore,user);
 
   //see if record is broken!
   if(newScore > highestScore)
@@ -194,33 +154,10 @@ function updateScoreForClient(newScore,user)
     highestScore = newScore;
     highestScoreUser = user;
   }
-
- //uploadFile(fileName);
-}
-function updateScoreFromFile()
-{
-  console.log("UPDATE SCORE");
-  //This allows me to create the interface to read stream the file
-  var lineReader = require('readline').createInterface({
-      input: fs.createReadStream(fileName)
-  });
-
-  //Line by line split the contents and then see if the new coming user+score is better
-  //Then whats on record.
-  lineReader.on('line', function (line) {
-      var array = line.split(':');
-      if(array[1] > highestScore)
-      {
-        highestScore = array[1];
-        highestScoreUser = array[0];
-      }
-      console.log('Number: ' + highestScore);
-      console.log('User: ' + highestScoreUser);
-  });
 }
 function uploadFile (fileName)
 { 
-  console.log('attempt upload');
+
   const fileContent = fs.readFileSync(fileName);
   var params = 
   {
@@ -240,3 +177,51 @@ function uploadFile (fileName)
     }
   });
 }
+
+async function checkForDuplicates(newScore,user) {
+
+  const fileStream = fs.createReadStream(fileName);
+
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
+  });
+  // Note: we use the crlfDelay option to recognize all instances of CR LF
+  // ('\r\n') in input.txt as a single line break.
+
+  for await (const line of rl) 
+  {
+    // Each line in input.txt will be successively available here as `line`.
+    console.log(`Line from file: ${line}`);
+    var array = line.split(':');
+    //if the first part of the string array(name) matches the user continue
+  
+    if(array[0].toString() == user)
+    {//if the new score is greater than the current
+      console.log("same user found" + array[0].toString());
+      if(newScore > array[1])
+      {
+        const options = {
+          files: fileName,
+          from: line,
+          to: user+':'+newScore,
+        };
+        replace(options).then(results => {
+          console.log('New Score for ' + user + ':', results);
+          uploadFile(fileName);  
+        }).catch(error => {
+          console.error('Error occurred while setting score:', error);
+        });
+        
+      }
+      return;
+    }
+
+  }
+    console.log("new user found");
+    //by this point no entry of user was found so we add one;
+    fs.appendFileSync(fileName,'\r\n');
+    fs.appendFileSync(fileName,user+':'+newScore);
+    uploadFile(fileName);
+}
+ 

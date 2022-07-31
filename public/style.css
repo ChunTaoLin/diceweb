@@ -3,7 +3,9 @@ body {
   linear-gradient(to right,
   #3f5efb,#00fd4c);
 }
-
+.someHeader {
+  height: 25px;
+}
 .display_whitespace{ white-space:pre; }
 
 .wrapper{

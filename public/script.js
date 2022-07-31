@@ -43,7 +43,6 @@ async function rollDice()
   //set local client data with the datapackage received from the server
   document.getElementById("images").setAttribute("src",diceData.img1);
   document.getElementById("images2").setAttribute("src",diceData.img2);
-
 }
 
 //Get leaderboard data, fetch the request and then when returned set entire contents to the
@@ -57,13 +56,17 @@ async function getData()
   console.log(data.leaderText.split(/\r?\n/));
 
   var myArray = data.leaderText.split(/\r?\n/);
-  for (let i = 0; i < myArray.length; i++) {
-    var para = document.createElement("p");
-    var node = document.createTextNode(myArray[i]);
-    para.appendChild(node);
-    document.getElementById("body").appendChild(para);
+  if(myArray.length <= 8)
+  {
+    for (let i = 0; i < myArray.length; i++) {
+   
+      var para = document.createElement("p");
+      var node = document.createTextNode(myArray[i]);
+      para.appendChild(node);
+      document.getElementById("leaderboard").appendChild(para);
+    }
   }
- // document.getElementById("leaderboard").innerHTML = data.leaderText.split(/\r?\n/);
+
 }
 
 //Give and send the player/user name, this will be a give and take that will return
